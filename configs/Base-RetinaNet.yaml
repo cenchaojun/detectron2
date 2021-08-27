@@ -18,7 +18,7 @@ DATASETS:
   TRAIN: ("SSLAD-2D_train",)
   TEST: ("SSLAD-2D_test",)
 SOLVER:
-  IMS_PER_BATCH: 8
+  IMS_PER_BATCH: 4
   BASE_LR: 0.001  # Note that RetinaNet uses a different default learning rate
   STEPS: (60000, 80000)
   MAX_ITER: 90000

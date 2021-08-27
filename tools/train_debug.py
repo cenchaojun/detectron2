@@ -18,7 +18,7 @@ You may want to write your own script with your datasets and other customization
 # python tools/train.py --config-file configs/Base-RetinaNet.yaml --num-gpus 1  OUTPUT_DIR training_dir/Base-RetinaNet
 # python tools/train.py --config-file configs/Base-RetinaNet.yaml --eval-only MODEL.WEIGHTS //data/cenzhaojun/detectron2/training_dir/Base-RetinaNet/model_0014999.pth OUTPUT_DIR training_dir/Base-RetinaNet
 # python tools/train.py --config-file configs/Misc/cascade_mask_rcnn_R_50_FPN_1x.yaml --num-gpus 2  OUTPUT_DIR training_dir/cascade_mask_rcnn_R_50_FPN_1x
-# python tools/train.py --resume --config-file configs/Misc/cascade_mask_rcnn_R_50_FPN_1x.yaml --num-gpus 2  OUTPUT_DIR training_dir/cascade_mask_rcnn_R_50_FPN_1x
+# python tools/train_debug.py --config-file configs/Base-RetinaNet.yaml --num-gpus 2  OUTPUT_DIR training_dir/Base-RetinaNet
 import logging
 import os
 from collections import OrderedDict
@@ -40,7 +40,7 @@ from detectron2.evaluation import (
     SemSegEvaluator,
     verify_results,
 )
-os.environ['CUDA_VISIBLE_DEVICES'] = '0,1,2,3'
+os.environ['CUDA_VISIBLE_DEVICES'] = '3'
 from detectron2.modeling import GeneralizedRCNNWithTTA
 ##===============注册自定义数据集================##
 from detectron2.data.datasets import register_coco_instances
@@ -136,6 +136,14 @@ def setup(args):
     Create configs and perform basic setups.
     """
     cfg = get_cfg()
+    args.config_file = '../configs/Base-RetinaNet.yaml'
+    cfg.merge_from_file(args.config_file)
+    cfg.merge_from_list(args.opts)
+    # cfg.num_gpus =2
+
+    cfg.DATASETS.TRAIN = ("SSLAD-2D_train",)  # 训练数据集名称
+    cfg.DATASETS.TEST = ("SSLAD-2D_test",)
+
     cfg.MODEL.WEIGHTS = "detectron2://ImageNetPretrained/MSRA/R-101.pkl"
     cfg.DATASETS.TRAIN = ("SSLAD-2D_train",)  # 训练数据集名称
     cfg.DATASETS.TEST = ("SSLAD-2D_test",)
@@ -176,7 +184,11 @@ def main(args):
 
 
 if __name__ == "__main__":
-    args = default_argument_parser().parse_args()
+    parser = default_argument_parser()
+    # parser.add_argument("--num-gpus", type=int, default=2, help="number of gpus *per machine*")
+    args = parser.parse_args()
+
+    #args = default_argument_parser().parse_args()
     print("Command Line Args:", args)
     launch(
         main,

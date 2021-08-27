@@ -25,15 +25,18 @@ MODEL:
     NAME: "FastRCNNConvFCHead"
     NUM_FC: 2
     POOLER_RESOLUTION: 7
-  ROI_MASK_HEAD:
-    NAME: "MaskRCNNConvUpsampleHead"
-    NUM_CONV: 4
-    POOLER_RESOLUTION: 14
+#  ROI_MASK_HEAD:
+#    NAME: "MaskRCNNConvUpsampleHead"
+#    NUM_CONV: 4
+#    POOLER_RESOLUTION: 14
 DATASETS:
-  TRAIN: ("coco_2017_train",)
-  TEST: ("coco_2017_val",)
+  TRAIN: ("SSLAD-2D_train",)
+  TEST: ("SSLAD-2D_test",)
+#  TRAIN: ("coco_2017_train",)
+#  TEST: ("coco_2017_val",)
 SOLVER:
-  IMS_PER_BATCH: 16
+  IMS_PER_BATCH: 50
+  CHECKPOINT_PERIOD: 1000
   BASE_LR: 0.02
   STEPS: (60000, 80000)
   MAX_ITER: 90000
