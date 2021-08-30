@@ -40,7 +40,7 @@ from detectron2.evaluation import (
     SemSegEvaluator,
     verify_results,
 )
-os.environ['CUDA_VISIBLE_DEVICES'] = '3'
+os.environ['CUDA_VISIBLE_DEVICES'] = '4'
 from detectron2.modeling import GeneralizedRCNNWithTTA
 ##===============注册自定义数据集================##
 from detectron2.data.datasets import register_coco_instances
@@ -138,7 +138,7 @@ def setup(args):
     cfg = get_cfg()
     args.config_file = '../configs/Base-RetinaNet.yaml'
     cfg.merge_from_file(args.config_file)
-    cfg.merge_from_list(args.opts)
+    # cfg.merge_from_list(args.opts)
     # cfg.num_gpus =2
 
     cfg.DATASETS.TRAIN = ("SSLAD-2D_train",)  # 训练数据集名称
@@ -147,7 +147,7 @@ def setup(args):
     cfg.MODEL.WEIGHTS = "detectron2://ImageNetPretrained/MSRA/R-101.pkl"
     cfg.DATASETS.TRAIN = ("SSLAD-2D_train",)  # 训练数据集名称
     cfg.DATASETS.TEST = ("SSLAD-2D_test",)
-    cfg.merge_from_file(args.config_file)
+    # cfg.merge_from_file(args.config_file)
     cfg.merge_from_list(args.opts)
     cfg.freeze()
     default_setup(cfg, args)
@@ -184,11 +184,7 @@ def main(args):
 
 
 if __name__ == "__main__":
-    parser = default_argument_parser()
-    # parser.add_argument("--num-gpus", type=int, default=2, help="number of gpus *per machine*")
-    args = parser.parse_args()
-
-    #args = default_argument_parser().parse_args()
+    args = default_argument_parser().parse_args()
     print("Command Line Args:", args)
     launch(
         main,
@@ -198,3 +194,19 @@ if __name__ == "__main__":
         dist_url=args.dist_url,
         args=(args,),
     )
+    # python tools/train_debug.py --config-file configs/Base-RetinaNet.yaml --num-gpus 2 OUTPUT_DIR training_dir/Base-RetinaNet
+    # parser = default_argument_parser()
+    # # 下面这个就可以调用2块GPU的命令行
+    # parser.add_argument("--num-gpus", type=int, default=2, help="number of gpus *per machine*")
+    # args = parser.parse_args()
+    #
+    # args = default_argument_parser().parse_args()
+    # print("Command Line Args:", args)
+    # launch(
+    #     main,
+    #     args.num_gpus,
+    #     num_machines=args.num_machines,
+    #     machine_rank=args.machine_rank,
+    #     dist_url=args.dist_url,
+    #     args=(args,),
+    # )

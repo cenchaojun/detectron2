@@ -50,6 +50,7 @@ def launch(
         args (tuple): arguments passed to main_func
     """
     world_size = num_machines * num_gpus_per_machine
+    # 就是如果使用超过1块的gpu就执行下面的这个程序
     if world_size > 1:
         # https://github.com/pytorch/pytorch/pull/14391
         # TODO prctl in spawned processes

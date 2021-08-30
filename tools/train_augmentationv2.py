@@ -18,20 +18,21 @@ You may want to write your own script with your datasets and other customization
 # python tools/train.py --config-file configs/Base-RetinaNet.yaml --num-gpus 1  OUTPUT_DIR training_dir/Base-RetinaNet
 # python tools/train.py --config-file configs/Base-RetinaNet.yaml --eval-only MODEL.WEIGHTS //data/cenzhaojun/detectron2/training_dir/Base-RetinaNet/model_0014999.pth OUTPUT_DIR training_dir/Base-RetinaNet
 # python tools/train.py --config-file configs/Misc/cascade_mask_rcnn_R_50_FPN_1x.yaml --num-gpus 2  OUTPUT_DIR training_dir/cascade_mask_rcnn_R_50_FPN_1x
-# python tools/train.py --resume --config-file configs/Misc/cascade_mask_rcnn_R_50_FPN_1x.yaml --num-gpus 2  OUTPUT_DIR training_dir/cascade_mask_rcnn_R_50_FPN_1x
-# python tools/train.py --config-file configs/Misc/cascade_mask_rcnn_R_50_FPN_1x.yaml --eval-only MODEL.WEIGHTS //data/cenzhaojun/detectron2/training_dir/cascade_mask_rcnn_R_50_FPN_1x/model_0043999.pth OUTPUT_DIR training_dir/cascade_mask_rcnn_R_50_FPN_1x
-# python tools/train.py --config-file configs/Misc/cascade_mask_rcnn_R_50_FPN_1x.yaml --eval-only MODEL.WEIGHTS //data/cenzhaojun/detectron2/training_dir/cascade_mask_rcnn_R_50_FPN_1x/model_0073999.pth OUTPUT_DIR training_dir/cascade_mask_rcnn_R_50_FPN_1x
-# python tools/train.py --config-file configs/Misc/cascade_rcnn_X_152_32x8d_FPN_IN5k_gn_dconv.yaml --num-gpus 2  OUTPUT_DIR training_dir/cascade_rcnn_X_152_32x8d_FPN_IN5k_gn_dconv
-# python tools/train.py --config-file configs/Misc/cascade_rcnn_R_50_FPN_1x.yaml --num-gpus 2  OUTPUT_DIR training_dir/cascade_rcnn_R_50_FPN_1x
+# python tools/train_debug.py --config-file configs/Base-RetinaNet.yaml --num-gpus 2  OUTPUT_DIR training_dir/Base-RetinaNet
 import logging
 import os
 from collections import OrderedDict
 import torch
 
+from skimage.util import random_noise
+import random
+
+from detectron2.data import transforms as T
 import detectron2.utils.comm as comm
 from detectron2.checkpoint import DetectionCheckpointer
 from detectron2.config import get_cfg
-from detectron2.data import MetadataCatalog
+from detectron2.data.dataset_mapper import DatasetMapper
+from detectron2.data import MetadataCatalog,build_detection_train_loader
 from detectron2.engine import DefaultTrainer, default_argument_parser, default_setup, hooks, launch
 from detectron2.evaluation import (
     CityscapesInstanceEvaluator,
@@ -44,7 +45,8 @@ from detectron2.evaluation import (
     SemSegEvaluator,
     verify_results,
 )
-os.environ['CUDA_VISIBLE_DEVICES'] = '0,1,2,3'
+print("hello")
+os.environ['CUDA_VISIBLE_DEVICES'] = '3'
 from detectron2.modeling import GeneralizedRCNNWithTTA
 ##===============注册自定义数据集================##
 from detectron2.data.datasets import register_coco_instances
@@ -104,6 +106,20 @@ def build_evaluator(cfg, dataset_name, output_folder=None):
         return evaluator_list[0]
     return DatasetEvaluators(evaluator_list)
 
+def random_range_noise(img, mode='pepper', range=(0.0, 0.1)):
+    amount = random.uniform(range[0], range[1])
+    if mode == 'pepper':
+        return random_noise(img, mode=mode, amount=amount, clip=True)
+    elif mode == 'gaussian':
+        return random_noise(img, mode=mode, clip=True, var=amount)
+
+class RandomPepperNoise(T.Augmentation):
+    def get_transform(self, image):
+        return T.ColorTransform(lambda x: (random_range_noise(x, mode='pepper', range=(0.0, 0.1))*255).astype('uint8'))
+class RandomGaussianNoise(T.Augmentation):
+    def get_transform(self, image):
+        return T.ColorTransform(lambda x: (random_range_noise(x, mode='gaussian', range=(0.0005, 0.01))*255).astype('uint8'))
+
 
 class Trainer(DefaultTrainer):
     """
@@ -113,6 +129,18 @@ class Trainer(DefaultTrainer):
     own training loop. You can use "tools/plain_train_net.py" as an example.
     """
 
+    def build_train_loader(cls, cfg):
+        return build_detection_train_loader(cfg, mapper=DatasetMapper(cfg, is_train=True, augmentations=[
+                T.RandomBrightness(0.3, 2.0),
+                T.RandomContrast(0.3, 2.5),
+                # T.ColorTransform
+                # RandomGaussianNoise(),
+                # RandomPepperNoise(),
+                # T.RandomRotation([-90,90]),
+                # RandomResize(0.5,1.5),
+                # T.RandomCrop('relative_range',(0.3,0.3)),
+                # T.RandomExtent(scale_range=(0.3, 1), shift_range=(1, 1))
+        ]))
     @classmethod
     def build_evaluator(cls, cfg, dataset_name, output_folder=None):
         return build_evaluator(cfg, dataset_name, output_folder)
@@ -140,15 +168,18 @@ def setup(args):
     Create configs and perform basic setups.
     """
     cfg = get_cfg()
+    args.config_file = '../configs/Base-RetinaNet.yaml'
+    cfg.merge_from_file(args.config_file)
+    # cfg.merge_from_list(args.opts)
+    # cfg.num_gpus =2
+
+    cfg.DATASETS.TRAIN = ("SSLAD-2D_train",)  # 训练数据集名称
+    cfg.DATASETS.TEST = ("SSLAD-2D_test",)
+
     cfg.MODEL.WEIGHTS = "detectron2://ImageNetPretrained/MSRA/R-101.pkl"
     cfg.DATASETS.TRAIN = ("SSLAD-2D_train",)  # 训练数据集名称
     cfg.DATASETS.TEST = ("SSLAD-2D_test",)
-    ITERS_IN_ONE_EPOCH = int(cfg.SOLVER.MAX_ITER / cfg.SOLVER.IMS_PER_BATCH)
-    # cfg.DATALOADER.NUM_WORKERS = 6
-    # cfg.MODEL.RETINANET.NUM_CLASSES = 6
-    cfg.TEST.EVAL_PERIOD = ITERS_IN_ONE_EPOCH
-    cfg.MODEL.ROI_HEADS.NUM_CLASSES = 6
-    cfg.merge_from_file(args.config_file)
+    # cfg.merge_from_file(args.config_file)
     cfg.merge_from_list(args.opts)
     cfg.freeze()
     default_setup(cfg, args)
@@ -195,3 +226,19 @@ if __name__ == "__main__":
         dist_url=args.dist_url,
         args=(args,),
     )
+    # python tools/train_debug.py --config-file configs/Base-RetinaNet.yaml --num-gpus 2 OUTPUT_DIR training_dir/Base-RetinaNet
+    # parser = default_argument_parser()
+    # # 下面这个就可以调用2块GPU的命令行
+    # parser.add_argument("--num-gpus", type=int, default=2, help="number of gpus *per machine*")
+    # args = parser.parse_args()
+    #
+    # args = default_argument_parser().parse_args()
+    # print("Command Line Args:", args)
+    # launch(
+    #     main,
+    #     args.num_gpus,
+    #     num_machines=args.num_machines,
+    #     machine_rank=args.machine_rank,
+    #     dist_url=args.dist_url,
+    #     args=(args,),
+    # )
