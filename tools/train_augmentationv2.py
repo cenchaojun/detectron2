@@ -45,8 +45,7 @@ from detectron2.evaluation import (
     SemSegEvaluator,
     verify_results,
 )
-print("hello")
-os.environ['CUDA_VISIBLE_DEVICES'] = '3'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
 from detectron2.modeling import GeneralizedRCNNWithTTA
 ##===============注册自定义数据集================##
 from detectron2.data.datasets import register_coco_instances
@@ -59,6 +58,8 @@ register_coco_instances("SSLAD-2D_test", {}, r"/data/cenzhaojun/dataset/SODA10M/
 from detectron2.data import MetadataCatalog
 MetadataCatalog.get("SSLAD-2D_train").thing_classes = ['Pedestrian','Cyclist','Car','Truck','Tram','Tricycle']
 MetadataCatalog.get("SSLAD-2D_test").thing_classes = ['Pedestrian','Cyclist','Car','Truck','Tram','Tricycle']
+
+# python tools/train_augmentationv2.py --config-file configs/Misc/cascade_rcnn_R_50_FPN_1x.yaml --num-gpus 2  OUTPUT_DIR training_dir/cascade_rcnn_R_50_FPN_1x_augmentation
 
 
 def build_evaluator(cfg, dataset_name, output_folder=None):
@@ -168,7 +169,7 @@ def setup(args):
     Create configs and perform basic setups.
     """
     cfg = get_cfg()
-    args.config_file = '../configs/Base-RetinaNet.yaml'
+    args.config_file = '../configs/Misc/cascade_rcnn_R_50_FPN_1x.yaml'
     cfg.merge_from_file(args.config_file)
     # cfg.merge_from_list(args.opts)
     # cfg.num_gpus =2
@@ -176,9 +177,15 @@ def setup(args):
     cfg.DATASETS.TRAIN = ("SSLAD-2D_train",)  # 训练数据集名称
     cfg.DATASETS.TEST = ("SSLAD-2D_test",)
 
-    cfg.MODEL.WEIGHTS = "detectron2://ImageNetPretrained/MSRA/R-101.pkl"
+    cfg.MODEL.WEIGHTS = "/data/cenzhaojun/detectron2/training_dir/pretrain/model_final_b275ba.pkl"
     cfg.DATASETS.TRAIN = ("SSLAD-2D_train",)  # 训练数据集名称
     cfg.DATASETS.TEST = ("SSLAD-2D_test",)
+    cfg.OUTPUT_DIR = '/data/cenzhaojun/detectron2/training_dir/cascade_rcnn_R_50_FPN_1x_augmentation'
+    ITERS_IN_ONE_EPOCH = int(cfg.SOLVER.MAX_ITER / cfg.SOLVER.IMS_PER_BATCH)
+    # cfg.DATALOADER.NUM_WORKERS = 6
+    # cfg.MODEL.RETINANET.NUM_CLASSES = 6
+    cfg.TEST.EVAL_PERIOD = ITERS_IN_ONE_EPOCH
+    cfg.MODEL.ROI_HEADS.NUM_CLASSES = 6
     # cfg.merge_from_file(args.config_file)
     cfg.merge_from_list(args.opts)
     cfg.freeze()
@@ -216,7 +223,12 @@ def main(args):
 
 
 if __name__ == "__main__":
+    # parser.add_argument("--num-gpus", type=int, default=2, help="number of gpus *per machine*")
+    # args = parser.parse_args()
     args = default_argument_parser().parse_args()
+    args.num_gpus = 2
+    args.resume = True
+    print(args.num_gpus)
     print("Command Line Args:", args)
     launch(
         main,

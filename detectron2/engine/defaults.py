@@ -110,6 +110,7 @@ Run on multiple machines:
     parser.add_argument(
         "--resume",
         action="store_true",
+        default=True,
         help="Whether to attempt to resume from the checkpoint directory. "
         "See documentation of `DefaultTrainer.resume_or_load()` for what it means.",
     )

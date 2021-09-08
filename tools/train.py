@@ -23,6 +23,8 @@ You may want to write your own script with your datasets and other customization
 # python tools/train.py --config-file configs/Misc/cascade_mask_rcnn_R_50_FPN_1x.yaml --eval-only MODEL.WEIGHTS //data/cenzhaojun/detectron2/training_dir/cascade_mask_rcnn_R_50_FPN_1x/model_0073999.pth OUTPUT_DIR training_dir/cascade_mask_rcnn_R_50_FPN_1x
 # python tools/train.py --config-file configs/Misc/cascade_rcnn_X_152_32x8d_FPN_IN5k_gn_dconv.yaml --num-gpus 2  OUTPUT_DIR training_dir/cascade_rcnn_X_152_32x8d_FPN_IN5k_gn_dconv
 # python tools/train.py --config-file configs/Misc/cascade_rcnn_R_50_FPN_1x.yaml --num-gpus 2  OUTPUT_DIR training_dir/cascade_rcnn_R_50_FPN_1x
+# python tools/train.py --resume --config-file configs/Misc/cascade_rcnn_R_50_FPN_1x.yaml --num-gpus 2  OUTPUT_DIR training_dir/cascade_rcnn_R_50_FPN_1x
+# python tools/train.py --resume --config-file configs/Misc/cascade_rcnn_R_50_FPN_1x.yaml --num-gpus 2  OUTPUT_DIR training_dir/cascade_rcnn_R_50_FPN_1x
 import logging
 import os
 from collections import OrderedDict
@@ -195,3 +197,4 @@ if __name__ == "__main__":
         dist_url=args.dist_url,
         args=(args,),
     )
+    print("heool")
