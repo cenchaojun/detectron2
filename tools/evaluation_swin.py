@@ -44,8 +44,8 @@ from detectron2.modeling import GeneralizedRCNNWithTTA
 from detectron2.data.datasets import register_coco_instances
 register_coco_instances("SSLAD-2D_train", {}, json_file=r"/data/cenzhaojun/dataset/SODA10M/SSLAD-2D/labeled/annotations/instance_train.json",
  image_root = r"/data/cenzhaojun/dataset/SODA10M/SSLAD-2D/labeled/train")
-register_coco_instances("SSLAD-2D_test", {}, r"/data/cenzhaojun/dataset/SODA10M/SSLAD-2D/labeled/annotations/instance_val.json",
- r"/data/cenzhaojun/dataset/SODA10M/SSLAD-2D/labeled/val")
+register_coco_instances("SSLAD-2D_test", {}, r"/data/cenzhaojun/dataset/SODA10M/SSLAD-2D/labeled_test/SSLAD-2D/labeled/annotations/instance_test.json",
+ r"/data/cenzhaojun/dataset/SODA10M/SSLAD-2D/labeled_test/SSLAD-2D/labeled/test")
 
 # 设置类别
 from detectron2.data import MetadataCatalog
@@ -197,7 +197,8 @@ def setup(args):
 
 
     cfg.merge_from_file(args.config_file)
-    cfg.MODEL.WEIGHTS = "/data/cenzhaojun/detectron2/weights/faster_rcnn_swint_T.pth"
+    cfg.MODEL.WEIGHTS = "/data/cenzhaojun/detectron2/training_dir/faster_rcnn_swint_T_FPN_3x/model_0007999.pth"
+    # cfg.MODEL.WEIGHTS = "/data/cenzhaojun/detectron2/weights/faster_rcnn_swint_T.pth"
     cfg.DATASETS.TRAIN = ("SSLAD-2D_train",)  # 训练数据集名称
     cfg.DATASETS.TEST = ("SSLAD-2D_test",)
     cfg.OUTPUT_DIR = '/data/cenzhaojun/detectron2/training_dir/faster_rcnn_swint_T_FPN_3x'
@@ -243,7 +244,8 @@ def main(args):
 if __name__ == "__main__":
     args = default_argument_parser().parse_args()
     args.num_gpus = 2
-    args.resume = True
+    args.resume = False
+    args.eval_only = True
     print("Command Line Args:", args)
     launch(
         main,

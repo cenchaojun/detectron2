@@ -38,7 +38,7 @@ from detectron2.modeling import GeneralizedRCNNWithTTA
 from detectron2.solver.build import maybe_add_gradient_clipping, get_default_optimizer_params
 
 from swint import add_swint_config
-os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '2,3,4,5'
 from detectron2.modeling import GeneralizedRCNNWithTTA
 ##===============注册自定义数据集================##
 from detectron2.data.datasets import register_coco_instances
@@ -63,18 +63,6 @@ class Trainer(DefaultTrainer):
     own training loop. You can use "tools/plain_train_net.py" as an example.
     """
 
-    # def build_train_loader(cls, cfg):
-    #     return build_detection_train_loader(cfg, mapper=DatasetMapper(cfg, is_train=True, augmentations=[
-    #             T.RandomBrightness(0.3, 2.0),
-    #             T.RandomContrast(0.3, 2.5),
-    #             # T.ColorTransform
-    #             # RandomGaussianNoise(),
-    #             # RandomPepperNoise(),
-    #             # T.RandomRotation([-90,90]),
-    #             # RandomResize(0.5,1.5),
-    #             # T.RandomCrop('relative_range',(0.3,0.3)),
-    #             # T.RandomExtent(scale_range=(0.3, 1), shift_range=(1, 1))
-    #     ]))
     @classmethod
     def build_evaluator(cls, cfg, dataset_name, output_folder=None):
         """
@@ -204,7 +192,7 @@ def setup(args):
     ITERS_IN_ONE_EPOCH = int(cfg.SOLVER.MAX_ITER / cfg.SOLVER.IMS_PER_BATCH)
     cfg.TEST.EVAL_PERIOD = ITERS_IN_ONE_EPOCH
     cfg.MODEL.ROI_HEADS.NUM_CLASSES = 6
-    cfg.SOLVER.IMS_PER_BATCH = 12
+    cfg.SOLVER.IMS_PER_BATCH = 48
     cfg.merge_from_list(args.opts)
     cfg.freeze()
     default_setup(cfg, args)
@@ -242,8 +230,9 @@ def main(args):
 
 if __name__ == "__main__":
     args = default_argument_parser().parse_args()
-    args.num_gpus = 2
+    args.num_gpus = 4
     args.resume = True
+    print(args.num_gpus)
     print("Command Line Args:", args)
     launch(
         main,

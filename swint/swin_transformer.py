@@ -36,7 +36,7 @@ class Mlp(nn.Module):
         x = self.drop(x)
         return x
 
-
+# 窗口的划分，就是将张量进行划分
 def window_partition(x, window_size):
     """
     Args:
@@ -50,7 +50,7 @@ def window_partition(x, window_size):
     windows = x.permute(0, 1, 3, 2, 4, 5).contiguous().view(-1, window_size, window_size, C)
     return windows
 
-
+# 这个是上面的对应的逆过程
 def window_reverse(windows, window_size, H, W):
     """
     Args:
@@ -66,14 +66,15 @@ def window_reverse(windows, window_size, H, W):
     x = x.permute(0, 1, 3, 2, 4, 5).contiguous().view(B, H, W, -1)
     return x
 
-
+# 传统的 Transformer 都是基于全局来计算注意力的，因此计算复杂度十分高。而 Swin Transformer 则将注意力的计算限制在每个窗口内，进而减少了计算量
+# 主要区别是在原始计算 Attention 的公式中的 Q,K 时加入了相对位置编码
 class WindowAttention(nn.Module):
     """ Window based multi-head self attention (W-MSA) module with relative position bias.
     It supports both of shifted and non-shifted window.
     Args:
-        dim (int): Number of input channels.
-        window_size (tuple[int]): The height and width of the window.
-        num_heads (int): Number of attention heads.
+        dim (int): Number of input channels.输入通道的数量
+        window_size (tuple[int]): The height and width of the window.窗口的大小
+        num_heads (int): Number of attention heads.注意力头的数量
         qkv_bias (bool, optional):  If True, add a learnable bias to query, key, value. Default: True
         qk_scale (float | None, optional): Override default qk scale of head_dim ** -0.5 if set
         attn_drop (float, optional): Dropout ratio of attention weight. Default: 0.0

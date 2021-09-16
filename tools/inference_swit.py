@@ -197,7 +197,8 @@ def setup(args):
 
 
     cfg.merge_from_file(args.config_file)
-    cfg.MODEL.WEIGHTS = "/data/cenzhaojun/detectron2/weights/faster_rcnn_swint_T.pth"
+    cfg.MODEL.WEIGHTS = "/data/cenzhaojun/detectron2/training_dir/faster_rcnn_swint_T_FPN_3x/model_0003999.pth"
+    # cfg.MODEL.WEIGHTS = "/data/cenzhaojun/detectron2/weights/faster_rcnn_swint_T.pth"
     cfg.DATASETS.TRAIN = ("SSLAD-2D_train",)  # 训练数据集名称
     cfg.DATASETS.TEST = ("SSLAD-2D_test",)
     cfg.OUTPUT_DIR = '/data/cenzhaojun/detectron2/training_dir/faster_rcnn_swint_T_FPN_3x'
@@ -243,7 +244,8 @@ def main(args):
 if __name__ == "__main__":
     args = default_argument_parser().parse_args()
     args.num_gpus = 2
-    args.resume = True
+    args.resume = False
+    args.eval_only = True
     print("Command Line Args:", args)
     launch(
         main,

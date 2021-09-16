@@ -18,10 +18,12 @@ import os
 from collections import OrderedDict
 import torch
 
+from detectron2.data import transforms as T
+from detectron2.data.dataset_mapper import DatasetMapper
 import detectron2.utils.comm as comm
 from detectron2.checkpoint import DetectionCheckpointer
 from detectron2.config import get_cfg
-from detectron2.data import MetadataCatalog
+from detectron2.data import MetadataCatalog,build_detection_train_loader
 from detectron2.engine import DefaultTrainer, default_argument_parser, default_setup, hooks, launch
 from detectron2.evaluation import (
     CityscapesInstanceEvaluator,
@@ -38,19 +40,25 @@ from detectron2.modeling import GeneralizedRCNNWithTTA
 from detectron2.solver.build import maybe_add_gradient_clipping, get_default_optimizer_params
 
 from swint import add_swint_config
+
 os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
 from detectron2.modeling import GeneralizedRCNNWithTTA
 ##===============注册自定义数据集================##
 from detectron2.data.datasets import register_coco_instances
-register_coco_instances("SSLAD-2D_train", {}, json_file=r"/data/cenzhaojun/dataset/SODA10M/SSLAD-2D/labeled/annotations/instance_train.json",
- image_root = r"/data/cenzhaojun/dataset/SODA10M/SSLAD-2D/labeled/train")
-register_coco_instances("SSLAD-2D_test", {}, r"/data/cenzhaojun/dataset/SODA10M/SSLAD-2D/labeled/annotations/instance_val.json",
- r"/data/cenzhaojun/dataset/SODA10M/SSLAD-2D/labeled/val")
+
+register_coco_instances("SSLAD-2D_train", {},
+                        json_file=r"/data/cenzhaojun/dataset/SODA10M/SSLAD-2D/labeled/annotations/instance_train.json",
+                        image_root=r"/data/cenzhaojun/dataset/SODA10M/SSLAD-2D/labeled/train")
+register_coco_instances("SSLAD-2D_test", {},
+                        r"/data/cenzhaojun/dataset/SODA10M/SSLAD-2D/labeled/annotations/instance_val.json",
+                        r"/data/cenzhaojun/dataset/SODA10M/SSLAD-2D/labeled/val")
 
 # 设置类别
 from detectron2.data import MetadataCatalog
-MetadataCatalog.get("SSLAD-2D_train").thing_classes = ['Pedestrian','Cyclist','Car','Truck','Tram','Tricycle']
-MetadataCatalog.get("SSLAD-2D_test").thing_classes = ['Pedestrian','Cyclist','Car','Truck','Tram','Tricycle']
+
+MetadataCatalog.get("SSLAD-2D_train").thing_classes = ['Pedestrian', 'Cyclist', 'Car', 'Truck', 'Tram', 'Tricycle']
+MetadataCatalog.get("SSLAD-2D_test").thing_classes = ['Pedestrian', 'Cyclist', 'Car', 'Truck', 'Tram', 'Tricycle']
+
 
 # python tools/train_augmentationv2.py --config-file configs/Misc/cascade_rcnn_R_50_FPN_1x.yaml --num-gpus 2  OUTPUT_DIR training_dir/cascade_rcnn_R_50_FPN_1x_augmentation
 
@@ -63,18 +71,15 @@ class Trainer(DefaultTrainer):
     own training loop. You can use "tools/plain_train_net.py" as an example.
     """
 
-    # def build_train_loader(cls, cfg):
-    #     return build_detection_train_loader(cfg, mapper=DatasetMapper(cfg, is_train=True, augmentations=[
-    #             T.RandomBrightness(0.3, 2.0),
-    #             T.RandomContrast(0.3, 2.5),
-    #             # T.ColorTransform
-    #             # RandomGaussianNoise(),
-    #             # RandomPepperNoise(),
-    #             # T.RandomRotation([-90,90]),
-    #             # RandomResize(0.5,1.5),
-    #             # T.RandomCrop('relative_range',(0.3,0.3)),
-    #             # T.RandomExtent(scale_range=(0.3, 1), shift_range=(1, 1))
-    #     ]))
+    def build_train_loader(cls, cfg):
+        return build_detection_train_loader(cfg, mapper=DatasetMapper(cfg, is_train=True, augmentations=[
+            T.RandomBrightness(0.3, 2.0),
+            T.RandomContrast(0.3, 2.5),
+            T.RandomRotation([-90,90]),
+            T.RandomCrop('relative_range',(0.3,0.3)),
+            T.RandomExtent(scale_range=(0.3, 1), shift_range=(1, 1))
+        ]))
+
     @classmethod
     def build_evaluator(cls, cfg, dataset_name, output_folder=None):
         """
@@ -103,12 +108,12 @@ class Trainer(DefaultTrainer):
             evaluator_list.append(COCOPanopticEvaluator(dataset_name, output_folder))
         if evaluator_type == "cityscapes_instance":
             assert (
-                torch.cuda.device_count() >= comm.get_rank()
+                    torch.cuda.device_count() >= comm.get_rank()
             ), "CityscapesEvaluator currently do not work with multiple machines."
             return CityscapesInstanceEvaluator(dataset_name)
         if evaluator_type == "cityscapes_sem_seg":
             assert (
-                torch.cuda.device_count() >= comm.get_rank()
+                    torch.cuda.device_count() >= comm.get_rank()
             ), "CityscapesEvaluator currently do not work with multiple machines."
             return CityscapesSemSegEvaluator(dataset_name)
         elif evaluator_type == "pascal_voc":
@@ -157,9 +162,9 @@ class Trainer(DefaultTrainer):
             # detectron2 doesn't have full model gradient clipping now
             clip_norm_val = cfg.SOLVER.CLIP_GRADIENTS.CLIP_VALUE
             enable = (
-                cfg.SOLVER.CLIP_GRADIENTS.ENABLED
-                and cfg.SOLVER.CLIP_GRADIENTS.CLIP_TYPE == "full_model"
-                and clip_norm_val > 0.0
+                    cfg.SOLVER.CLIP_GRADIENTS.ENABLED
+                    and cfg.SOLVER.CLIP_GRADIENTS.CLIP_TYPE == "full_model"
+                    and clip_norm_val > 0.0
             )
 
             class FullModelGradientClippingOptimizer(optim):
@@ -195,16 +200,15 @@ def setup(args):
     args.config_file = '../configs/SwinT/faster_rcnn_swint_T_FPN_3x.yaml'
     add_swint_config(cfg)
 
-
     cfg.merge_from_file(args.config_file)
     cfg.MODEL.WEIGHTS = "/data/cenzhaojun/detectron2/weights/faster_rcnn_swint_T.pth"
     cfg.DATASETS.TRAIN = ("SSLAD-2D_train",)  # 训练数据集名称
     cfg.DATASETS.TEST = ("SSLAD-2D_test",)
-    cfg.OUTPUT_DIR = '/data/cenzhaojun/detectron2/training_dir/faster_rcnn_swint_T_FPN_3x'
+    cfg.OUTPUT_DIR = '/data/cenzhaojun/detectron2/training_dir/faster_rcnn_swint_T_FPN_3x_aug'
     ITERS_IN_ONE_EPOCH = int(cfg.SOLVER.MAX_ITER / cfg.SOLVER.IMS_PER_BATCH)
     cfg.TEST.EVAL_PERIOD = ITERS_IN_ONE_EPOCH
     cfg.MODEL.ROI_HEADS.NUM_CLASSES = 6
-    cfg.SOLVER.IMS_PER_BATCH = 12
+    cfg.SOLVER.IMS_PER_BATCH = 6
     cfg.merge_from_list(args.opts)
     cfg.freeze()
     default_setup(cfg, args)
@@ -243,7 +247,7 @@ def main(args):
 if __name__ == "__main__":
     args = default_argument_parser().parse_args()
     args.num_gpus = 2
-    args.resume = True
+    # args.resume = True
     print("Command Line Args:", args)
     launch(
         main,
