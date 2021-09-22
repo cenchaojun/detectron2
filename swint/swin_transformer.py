@@ -291,7 +291,7 @@ class PatchMerging(nn.Module):
 
 
 class BasicLayer(nn.Module):
-    """ A basic Swin Transformer layer for one stage.
+    """ A basic Swin Transformer layer for one stage. 一个起初的
     Args:
         dim (int): Number of feature channels
         depth (int): Depths of this stage.

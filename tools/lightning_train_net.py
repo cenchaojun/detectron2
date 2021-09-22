@@ -124,7 +124,7 @@ class TrainingModule(LightningModule):
         for idx, dataset_name in enumerate(self.cfg.DATASETS.TEST):
             results[dataset_name] = self._evaluators[idx].evaluate()
             if comm.is_main_process():
-                print_csv_format(results[dataset_name])
+                print_csv_format(results[dataset_name])Apex
 
         if len(results) == 1:
             results = list(results.values())[0]
@@ -237,3 +237,4 @@ if __name__ == "__main__":
     args = parser.parse_args()
     logger.info("Command Line Args:", args)
     main(args)
+    # nohup

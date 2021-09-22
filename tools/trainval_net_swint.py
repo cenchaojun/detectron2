@@ -38,18 +38,18 @@ from detectron2.modeling import GeneralizedRCNNWithTTA
 from detectron2.solver.build import maybe_add_gradient_clipping, get_default_optimizer_params
 
 from swint import add_swint_config
-os.environ['CUDA_VISIBLE_DEVICES'] = '2,3'
+os.environ['CUDA_VISIBLE_DEVICES'] = '4,5'
 from detectron2.modeling import GeneralizedRCNNWithTTA
 ##===============注册自定义数据集================##
 from detectron2.data.datasets import register_coco_instances
-register_coco_instances("SSLAD-2D_train", {}, json_file=r"/data/cenzhaojun/dataset/SODA10M/SSLAD-2D/labeled/annotations/instance_train.json",
- image_root = r"/data/cenzhaojun/dataset/SODA10M/SSLAD-2D/labeled/train")
+register_coco_instances("SSLAD-2D_trainval", {}, json_file=r"/data/cenzhaojun/dataset/SODA10M/SSLAD-2D/labeled/annotations/instance_trainval.json",
+ image_root = r"/data/cenzhaojun/dataset/SODA10M/SSLAD-2D/labeled/trainval")
 register_coco_instances("SSLAD-2D_test", {}, r"/data/cenzhaojun/dataset/SODA10M/SSLAD-2D/labeled/annotations/instance_val.json",
  r"/data/cenzhaojun/dataset/SODA10M/SSLAD-2D/labeled/val")
 
 # 设置类别
 from detectron2.data import MetadataCatalog
-MetadataCatalog.get("SSLAD-2D_train").thing_classes = ['Pedestrian','Cyclist','Car','Truck','Tram','Tricycle']
+MetadataCatalog.get("SSLAD-2D_trainval").thing_classes = ['Pedestrian','Cyclist','Car','Truck','Tram','Tricycle']
 MetadataCatalog.get("SSLAD-2D_test").thing_classes = ['Pedestrian','Cyclist','Car','Truck','Tram','Tricycle']
 
 # python tools/train_augmentationv2.py --config-file configs/Misc/cascade_rcnn_R_50_FPN_1x.yaml --num-gpus 2  OUTPUT_DIR training_dir/cascade_rcnn_R_50_FPN_1x_augmentation
@@ -198,15 +198,13 @@ def setup(args):
 
     cfg.merge_from_file(args.config_file)
     cfg.MODEL.WEIGHTS = "/data/cenzhaojun/detectron2/weights/faster_rcnn_swint_T.pth"
-    cfg.DATASETS.TRAIN = ("SSLAD-2D_train",)  # 训练数据集名称
+    cfg.DATASETS.TRAIN = ("SSLAD-2D_trainval",)  # 训练数据集名称
     cfg.DATASETS.TEST = ("SSLAD-2D_test",)
-    cfg.OUTPUT_DIR = '/data/cenzhaojun/detectron2/training_dir/faster_rcnn_swint_T_FPN_3x_full_reso'
-    ITERS_IN_ONE_EPOCH = int(cfg.SOLVER.MAX_ITER / cfg.SOLVER.IMS_PER_BATCH)
-    cfg.TEST.EVAL_PERIOD = ITERS_IN_ONE_EPOCH
-    cfg.INPUT.MAX_SIZE_TRAIN = 1920
-    cfg.INPUT.MAX_SIZE_TEST = 1920
+    cfg.OUTPUT_DIR = '/data/cenzhaojun/detectron2/training_dir/faster_rcnn_swint_T_FPN_trainval'
+    cfg.SOLVER.IMS_PER_BATCH = 24
+    # ITERS_IN_ONE_EPOCH = int(cfg.SOLVER.MAX_ITER / cfg.SOLVER.IMS_PER_BATCH)
+    cfg.TEST.EVAL_PERIOD = 2000
     cfg.MODEL.ROI_HEADS.NUM_CLASSES = 6
-    cfg.SOLVER.IMS_PER_BATCH = 22
     cfg.merge_from_list(args.opts)
     cfg.freeze()
     default_setup(cfg, args)
