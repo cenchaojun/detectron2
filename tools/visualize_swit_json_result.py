@@ -61,8 +61,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="A script that visualizes the json predictions from COCO or LVIS dataset."
     )
-    parser.add_argument("--input", default='/data/cenzhaojun/detectron2/training_dir/faster_rcnn_swint_T_FPN_3x/inference/coco_instances_results.json',help="JSON file produced by the model")
-    parser.add_argument("--output", default='/data/cenzhaojun/detectron2/training_dir/faster_rcnn_swint_T_FPN_3x/inference/output', help="output directory")
+    parser.add_argument("--input", default='/data/cenzhaojun/detectron2/training_dir/faster_rcnn_swint_T_FPN_trainval/test/inference/coco_instances_results.json',help="JSON file produced by the model")
+    parser.add_argument("--output", default='/data/cenzhaojun/detectron2/training_dir/faster_rcnn_swint_T_FPN_trainval/inference/output', help="output directory")
     parser.add_argument("--dataset", help="name of the dataset", default="SSLAD-2D_test")
     parser.add_argument("--conf-threshold", default=0.5, type=float, help="confidence threshold")
     args = parser.parse_args()

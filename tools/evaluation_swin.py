@@ -38,7 +38,7 @@ from detectron2.modeling import GeneralizedRCNNWithTTA
 from detectron2.solver.build import maybe_add_gradient_clipping, get_default_optimizer_params
 
 from swint import add_swint_config
-os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '4,5'
 from detectron2.modeling import GeneralizedRCNNWithTTA
 ##===============注册自定义数据集================##
 from detectron2.data.datasets import register_coco_instances
@@ -197,15 +197,15 @@ def setup(args):
 
 
     cfg.merge_from_file(args.config_file)
-    cfg.MODEL.WEIGHTS = "/data/cenzhaojun/detectron2/training_dir/faster_rcnn_swint_T_FPN_3x/model_0007999.pth"
+    cfg.MODEL.WEIGHTS = "/data/cenzhaojun/detectron2/training_dir/faster_rcnn_swint_T_FPN_trainval/model_0053999.pth"
     # cfg.MODEL.WEIGHTS = "/data/cenzhaojun/detectron2/weights/faster_rcnn_swint_T.pth"
     cfg.DATASETS.TRAIN = ("SSLAD-2D_train",)  # 训练数据集名称
     cfg.DATASETS.TEST = ("SSLAD-2D_test",)
-    cfg.OUTPUT_DIR = '/data/cenzhaojun/detectron2/training_dir/faster_rcnn_swint_T_FPN_3x'
+    cfg.OUTPUT_DIR = '/data/cenzhaojun/detectron2/training_dir/faster_rcnn_swint_T_FPN_trainval/test'
     ITERS_IN_ONE_EPOCH = int(cfg.SOLVER.MAX_ITER / cfg.SOLVER.IMS_PER_BATCH)
     cfg.TEST.EVAL_PERIOD = ITERS_IN_ONE_EPOCH
     cfg.MODEL.ROI_HEADS.NUM_CLASSES = 6
-    cfg.SOLVER.IMS_PER_BATCH = 12
+    cfg.SOLVER.IMS_PER_BATCH = 24
     cfg.merge_from_list(args.opts)
     cfg.freeze()
     default_setup(cfg, args)

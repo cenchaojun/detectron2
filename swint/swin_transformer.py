@@ -614,7 +614,7 @@ class SwinTransformer(Backbone):
         return outs #{"stage%d" % (i+2,): out for i, out in enumerate(outs)} #tuple(outs)
 
     def train(self, mode=True):
-        """Convert the model into training mode while keep layers freezed."""
+        """Convert the model into training mode while keep layers freezed.转换模型到训练模式，同时保持层冻结"""
         super(SwinTransformer, self).train(mode)
         self._freeze_stages()
 
@@ -725,3 +725,15 @@ def build_retinanet_swint_fpn_backbone(cfg, input_shape: ShapeSpec):
         fuse_type=cfg.MODEL.FPN.FUSE_TYPE,
     )
     return backbone
+if __name__ == '__main__':
+    x = torch.randn(1,3,224,224)
+    print(x.shape)
+    output_featuer = ["stage2", "stage3", "stage4", "stage5"]
+    swin_transformer = SwinTransformer(out_features=output_featuer)
+    y = swin_transformer(x)
+    print(y)
+    print(y["stage2"].shape)
+    print(y["stage3"].shape)
+    print(y["stage4"].shape)
+    print(y["stage5"].shape)
+
