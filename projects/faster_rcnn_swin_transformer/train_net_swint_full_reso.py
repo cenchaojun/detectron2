@@ -192,7 +192,7 @@ def setup(args):
     Create configs and perform basic setups.
     """
     cfg = get_cfg()
-    args.config_file = '../configs/SwinT/faster_rcnn_swint_T_FPN_3x.yaml'
+    args.config_file = '../../configs/SwinT/faster_rcnn_swint_T_FPN_3x.yaml'
     add_swint_config(cfg)
 
 

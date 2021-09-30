@@ -38,19 +38,21 @@ from detectron2.modeling import GeneralizedRCNNWithTTA
 from detectron2.solver.build import maybe_add_gradient_clipping, get_default_optimizer_params
 
 from swint import add_swint_config
-os.environ['CUDA_VISIBLE_DEVICES'] = '4,5'
+from detectron2_backbone import backbone
+from detectron2_backbone.config import add_backbone_config
+os.environ['CUDA_VISIBLE_DEVICES'] = '2,3'
 from detectron2.modeling import GeneralizedRCNNWithTTA
 ##===============注册自定义数据集================##
 from detectron2.data.datasets import register_coco_instances
-register_coco_instances("SSLAD-2D_trainval", {}, json_file=r"/data/cenzhaojun/dataset/SODA10M/SSLAD-2D/labeled/annotations/instance_trainval.json",
- image_root = r"/data/cenzhaojun/dataset/SODA10M/SSLAD-2D/labeled/trainval")
-register_coco_instances("SSLAD-2D_test", {}, r"/data/cenzhaojun/dataset/SODA10M/SSLAD-2D/labeled/annotations/instance_val.json",
+register_coco_instances("SSLAD-2D_train", {}, json_file=r"/data/cenzhaojun/dataset/SODA10M/SSLAD-2D/labeled/annotations/instance_train.json",
+ image_root = r"/data/cenzhaojun/dataset/SODA10M/SSLAD-2D/labeled/train")
+register_coco_instances("SSLAD-2D_val", {}, r"/data/cenzhaojun/dataset/SODA10M/SSLAD-2D/labeled/annotations/instance_val.json",
  r"/data/cenzhaojun/dataset/SODA10M/SSLAD-2D/labeled/val")
 
 # 设置类别
 from detectron2.data import MetadataCatalog
-MetadataCatalog.get("SSLAD-2D_trainval").thing_classes = ['Pedestrian','Cyclist','Car','Truck','Tram','Tricycle']
-MetadataCatalog.get("SSLAD-2D_test").thing_classes = ['Pedestrian','Cyclist','Car','Truck','Tram','Tricycle']
+MetadataCatalog.get("SSLAD-2D_train").thing_classes = ['Pedestrian','Cyclist','Car','Truck','Tram','Tricycle']
+MetadataCatalog.get("SSLAD-2D_val").thing_classes = ['Pedestrian','Cyclist','Car','Truck','Tram','Tricycle']
 
 # python tools/train_augmentationv2.py --config-file configs/Misc/cascade_rcnn_R_50_FPN_1x.yaml --num-gpus 2  OUTPUT_DIR training_dir/cascade_rcnn_R_50_FPN_1x_augmentation
 
@@ -142,49 +144,49 @@ class Trainer(DefaultTrainer):
         res = OrderedDict({k + "_TTA": v for k, v in res.items()})
         return res
 
-    @classmethod
-    def build_optimizer(cls, cfg, model):
-        params = get_default_optimizer_params(
-            model,
-            base_lr=cfg.SOLVER.BASE_LR,
-            weight_decay=cfg.SOLVER.WEIGHT_DECAY,
-            weight_decay_norm=cfg.SOLVER.WEIGHT_DECAY_NORM,
-            bias_lr_factor=cfg.SOLVER.BIAS_LR_FACTOR,
-            weight_decay_bias=cfg.SOLVER.WEIGHT_DECAY_BIAS,
-        )
-
-        def maybe_add_full_model_gradient_clipping(optim):  # optim: the optimizer class
-            # detectron2 doesn't have full model gradient clipping now
-            clip_norm_val = cfg.SOLVER.CLIP_GRADIENTS.CLIP_VALUE
-            enable = (
-                cfg.SOLVER.CLIP_GRADIENTS.ENABLED
-                and cfg.SOLVER.CLIP_GRADIENTS.CLIP_TYPE == "full_model"
-                and clip_norm_val > 0.0
-            )
-
-            class FullModelGradientClippingOptimizer(optim):
-                def step(self, closure=None):
-                    all_params = itertools.chain(*[x["params"] for x in self.param_groups])
-                    torch.nn.utils.clip_grad_norm_(all_params, clip_norm_val)
-                    super().step(closure=closure)
-
-            return FullModelGradientClippingOptimizer if enable else optim
-
-        optimizer_type = cfg.SOLVER.OPTIMIZER
-        if optimizer_type == "SGD":
-            optimizer = maybe_add_gradient_clipping(torch.optim.SGD)(
-                params, cfg.SOLVER.BASE_LR, momentum=cfg.SOLVER.MOMENTUM,
-                nesterov=cfg.SOLVER.NESTEROV,
-                weight_decay=cfg.SOLVER.WEIGHT_DECAY,
-            )
-        elif optimizer_type == "AdamW":
-            optimizer = maybe_add_full_model_gradient_clipping(torch.optim.AdamW)(
-                params, cfg.SOLVER.BASE_LR, betas=(0.9, 0.999),
-                weight_decay=cfg.SOLVER.WEIGHT_DECAY,
-            )
-        else:
-            raise NotImplementedError(f"no optimizer type {optimizer_type}")
-        return optimizer
+    # @classmethod
+    # def build_optimizer(cls, cfg, model):
+    #     params = get_default_optimizer_params(
+    #         model,
+    #         base_lr=cfg.SOLVER.BASE_LR,
+    #         weight_decay=cfg.SOLVER.WEIGHT_DECAY,
+    #         weight_decay_norm=cfg.SOLVER.WEIGHT_DECAY_NORM,
+    #         bias_lr_factor=cfg.SOLVER.BIAS_LR_FACTOR,
+    #         weight_decay_bias=cfg.SOLVER.WEIGHT_DECAY_BIAS,
+    #     )
+    #
+    #     def maybe_add_full_model_gradient_clipping(optim):  # optim: the optimizer class
+    #         # detectron2 doesn't have full model gradient clipping now
+    #         clip_norm_val = cfg.SOLVER.CLIP_GRADIENTS.CLIP_VALUE
+    #         enable = (
+    #             cfg.SOLVER.CLIP_GRADIENTS.ENABLED
+    #             and cfg.SOLVER.CLIP_GRADIENTS.CLIP_TYPE == "full_model"
+    #             and clip_norm_val > 0.0
+    #         )
+    #
+    #         class FullModelGradientClippingOptimizer(optim):
+    #             def step(self, closure=None):
+    #                 all_params = itertools.chain(*[x["params"] for x in self.param_groups])
+    #                 torch.nn.utils.clip_grad_norm_(all_params, clip_norm_val)
+    #                 super().step(closure=closure)
+    #
+    #         return FullModelGradientClippingOptimizer if enable else optim
+    #
+    #     optimizer_type = cfg.SOLVER.OPTIMIZER
+    #     if optimizer_type == "SGD":
+    #         optimizer = maybe_add_gradient_clipping(torch.optim.SGD)(
+    #             params, cfg.SOLVER.BASE_LR, momentum=cfg.SOLVER.MOMENTUM,
+    #             nesterov=cfg.SOLVER.NESTEROV,
+    #             weight_decay=cfg.SOLVER.WEIGHT_DECAY,
+    #         )
+    #     elif optimizer_type == "AdamW":
+    #         optimizer = maybe_add_full_model_gradient_clipping(torch.optim.AdamW)(
+    #             params, cfg.SOLVER.BASE_LR, betas=(0.9, 0.999),
+    #             weight_decay=cfg.SOLVER.WEIGHT_DECAY,
+    #         )
+    #     else:
+    #         raise NotImplementedError(f"no optimizer type {optimizer_type}")
+    #     return optimizer
 
 
 def setup(args):
@@ -192,19 +194,19 @@ def setup(args):
     Create configs and perform basic setups.
     """
     cfg = get_cfg()
-    args.config_file = '../configs/SwinT/faster_rcnn_swint_T_FPN_3x.yaml'
-    add_swint_config(cfg)
+    args.config_file = '../../configs/COCO-Detection/faster_rcnn_R_18_FPN_1x.yaml'
+    add_backbone_config(cfg)
 
 
     cfg.merge_from_file(args.config_file)
-    cfg.MODEL.WEIGHTS = "/data/cenzhaojun/detectron2/weights/faster_rcnn_swint_T.pth"
-    cfg.DATASETS.TRAIN = ("SSLAD-2D_trainval",)  # 训练数据集名称
-    cfg.DATASETS.TEST = ("SSLAD-2D_test",)
-    cfg.OUTPUT_DIR = '/data/cenzhaojun/detectron2/training_dir/faster_rcnn_swint_T_FPN_trainval'
-    cfg.SOLVER.IMS_PER_BATCH = 24
-    # ITERS_IN_ONE_EPOCH = int(cfg.SOLVER.MAX_ITER / cfg.SOLVER.IMS_PER_BATCH)
+    # cfg.MODEL.WEIGHTS = "/data/cenzhaojun/detectron2/weights/faster_rcnn_swint_T.pth"
+    cfg.DATASETS.TRAIN = ("SSLAD-2D_train",)  # 训练数据集名称
+    cfg.DATASETS.TEST = ("SSLAD-2D_val",)
+    cfg.OUTPUT_DIR = '/data/cenzhaojun/detectron2/training_dir/faster_rcnn_resnet18'
+    #ITERS_IN_ONE_EPOCH = int(cfg.SOLVER.MAX_ITER / cfg.SOLVER.IMS_PER_BATCH)
     cfg.TEST.EVAL_PERIOD = 2000
     cfg.MODEL.ROI_HEADS.NUM_CLASSES = 6
+    cfg.SOLVER.IMS_PER_BATCH = 80
     cfg.merge_from_list(args.opts)
     cfg.freeze()
     default_setup(cfg, args)

@@ -38,7 +38,7 @@ from detectron2.modeling import GeneralizedRCNNWithTTA
 from detectron2.solver.build import maybe_add_gradient_clipping, get_default_optimizer_params
 
 from swint import add_swint_config
-os.environ['CUDA_VISIBLE_DEVICES'] = '2,3,4,5'
+os.environ['CUDA_VISIBLE_DEVICES'] = '3'
 from detectron2.modeling import GeneralizedRCNNWithTTA
 ##===============注册自定义数据集================##
 from detectron2.data.datasets import register_coco_instances
@@ -180,7 +180,7 @@ def setup(args):
     Create configs and perform basic setups.
     """
     cfg = get_cfg()
-    args.config_file = '../configs/SwinT/faster_rcnn_swint_T_FPN_3x.yaml'
+    args.config_file = '../../configs/SwinT/faster_rcnn_swint_T_FPN_3x.yaml'
     add_swint_config(cfg)
 
 
@@ -191,8 +191,8 @@ def setup(args):
     cfg.OUTPUT_DIR = '/data/cenzhaojun/detectron2/training_dir/faster_rcnn_swint_T_FPN_3x'
     ITERS_IN_ONE_EPOCH = int(cfg.SOLVER.MAX_ITER / cfg.SOLVER.IMS_PER_BATCH)
     cfg.TEST.EVAL_PERIOD = ITERS_IN_ONE_EPOCH
+    cfg.SOLVER.IMS_PER_BATCH = 1
     cfg.MODEL.ROI_HEADS.NUM_CLASSES = 6
-    cfg.SOLVER.IMS_PER_BATCH = 48
     cfg.merge_from_list(args.opts)
     cfg.freeze()
     default_setup(cfg, args)
@@ -230,9 +230,8 @@ def main(args):
 
 if __name__ == "__main__":
     args = default_argument_parser().parse_args()
-    args.num_gpus = 4
+    args.num_gpus = 1
     args.resume = True
-    print(args.num_gpus)
     print("Command Line Args:", args)
     launch(
         main,

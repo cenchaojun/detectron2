@@ -15,6 +15,8 @@ from detectron2.modeling.backbone.build import BACKBONE_REGISTRY
 from detectron2.modeling.backbone.fpn import FPN, LastLevelMaxPool, LastLevelP6P7
 from detectron2.layers import ShapeSpec
 
+from torchinfo import summary
+
 
 class Mlp(nn.Module):
     """ Multilayer perceptron."""
@@ -726,14 +728,18 @@ def build_retinanet_swint_fpn_backbone(cfg, input_shape: ShapeSpec):
     )
     return backbone
 if __name__ == '__main__':
-    x = torch.randn(1,3,224,224)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    x = torch.randn(1,3,224,224).cuda()
+    # x =  x.cuda()
     print(x.shape)
     output_featuer = ["stage2", "stage3", "stage4", "stage5"]
-    swin_transformer = SwinTransformer(out_features=output_featuer)
+    swin_transformer = SwinTransformer(out_features=output_featuer).to(device)
+    print(swin_transformer)
     y = swin_transformer(x)
-    print(y)
-    print(y["stage2"].shape)
-    print(y["stage3"].shape)
-    print(y["stage4"].shape)
-    print(y["stage5"].shape)
+    summary(swin_transformer,input_size=(1,3,224,224),verbose=2, col_names=['kernel_size','output_size',"num_params","kernel_size","mult_adds"])
+    # print(y)
+    # print(y["stage2"].shape)
+    # print(y["stage3"].shape)
+    # print(y["stage4"].shape)
+    # print(y["stage5"].shape)
 
