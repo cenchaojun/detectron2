@@ -49,6 +49,7 @@ def window_partition(x, window_size):
     """
     B, H, W, C = x.shape
     x = x.view(B, H // window_size, window_size, W // window_size, window_size, C)
+    # 调用view之前需要先调用contiguous()，否则容易报错，contiguous是对tensor进行深拷贝
     windows = x.permute(0, 1, 3, 2, 4, 5).contiguous().view(-1, window_size, window_size, C)
     return windows
 
@@ -72,6 +73,9 @@ def window_reverse(windows, window_size, H, W):
 # 主要区别是在原始计算 Attention 的公式中的 Q,K 时加入了相对位置编码
 class WindowAttention(nn.Module):
     """ Window based multi-head self attention (W-MSA) module with relative position bias.
+    基于窗口的多头注意力模型具有相对位置偏差，它支持移动和不移动的窗口。
+    以前的注意力都是基于全局来计算的，而swin transformer是将注意力的计算限制在被一个窗口内，进而减少嘞计算量。
+    主要区别是在原始计算 Attention 的公式中的 Q,K 时加入了相对位置编码。后续实验有证明相对位置编码的加入提升了模型性能。
     It supports both of shifted and non-shifted window.
     Args:
         dim (int): Number of input channels.输入通道的数量
@@ -93,6 +97,7 @@ class WindowAttention(nn.Module):
         self.scale = qk_scale or head_dim ** -0.5
 
         # define a parameter table of relative position bias
+        # 设置一个形状为（2*(Wh-1) * 2*(Ww-1), nH）的可学习变量，用于后续的位置编码
         self.relative_position_bias_table = nn.Parameter(
             torch.zeros((2 * window_size[0] - 1) * (2 * window_size[1] - 1), num_heads))  # 2*Wh-1 * 2*Ww-1, nH
 
@@ -157,14 +162,14 @@ class SwinTransformerBlock(nn.Module):
         dim (int): Number of input channels.
         num_heads (int): Number of attention heads.
         window_size (int): Window size.
-        shift_size (int): Shift size for SW-MSA.
+        shift_size (int): Shift size for SW-MSA. 移动的大小
         mlp_ratio (float): Ratio of mlp hidden dim to embedding dim.
         qkv_bias (bool, optional): If True, add a learnable bias to query, key, value. Default: True
         qk_scale (float | None, optional): Override default qk scale of head_dim ** -0.5 if set.
         drop (float, optional): Dropout rate. Default: 0.0
         attn_drop (float, optional): Attention dropout rate. Default: 0.0
         drop_path (float, optional): Stochastic depth rate. Default: 0.0
-        act_layer (nn.Module, optional): Activation layer. Default: nn.GELU
+        act_layer (nn.Module, optional): Activation layer. Default: nn.GELU # 输入的激活层的类型，默认是GELU（图）
         norm_layer (nn.Module, optional): Normalization layer.  Default: nn.LayerNorm
     """
 
@@ -252,7 +257,8 @@ class SwinTransformerBlock(nn.Module):
 
 
 class PatchMerging(nn.Module):
-    """ Patch Merging Layer
+    """ Patch Merging Layer 作用：在每一个stage开始前做降采样，用于缩小分辨率，调整通道数，进而形成层次化的设计，
+    在CNN中可以通过池化或者stride=2的卷积来降低特征图的大小
     Args:
         dim (int): Number of input channels.
         norm_layer (nn.Module, optional): Normalization layer.  Default: nn.LayerNorm
@@ -261,7 +267,7 @@ class PatchMerging(nn.Module):
         super().__init__()
         self.dim = dim
         self.reduction = nn.Linear(4 * dim, 2 * dim, bias=False)
-        self.norm = norm_layer(4 * dim)
+        self.norm = norm_layer(4 * dim) # 因为最后展开后，通道数维度就会变为原来的4倍（因为HW给缩小2倍数， ）
 
     def forward(self, x, H, W):
         """ Forward function.
@@ -269,10 +275,10 @@ class PatchMerging(nn.Module):
             x: Input feature, tensor size (B, H*W, C).
             H, W: Spatial resolution of the input feature.
         """
-        B, L, C = x.shape
+        B, L, C = x.shape # 获得输入的tensor形状，如果L == H * W就报错
         assert L == H * W, "input feature has wrong size"
 
-        x = x.view(B, H, W, C)
+        x = x.view(B, H, W, C)  # 改变输入tensor的形状
 
         # padding
         pad_input = (H % 2 == 1) or (W % 2 == 1)
@@ -293,20 +299,21 @@ class PatchMerging(nn.Module):
 
 
 class BasicLayer(nn.Module):
-    """ A basic Swin Transformer layer for one stage. 一个起初的
+    """ A basic Swin Transformer layer for one stage. 一个初始的Swin Transformer结构
+    每一个stage都是由depth个SwinTransformerBlock组成，就和残差神经网络中的残差块一样。
     Args:
-        dim (int): Number of feature channels
-        depth (int): Depths of this stage.
-        num_heads (int): Number of attention head.
-        window_size (int): Local window size. Default: 7.
-        mlp_ratio (float): Ratio of mlp hidden dim to embedding dim. Default: 4.
+        dim (int): Number of feature channels  特征通道的数量，也就是维度
+        depth (int): Depths of this stage. 这一个stage的深度，重复多少个
+        num_heads (int): Number of attention head. 注意力头的数量
+        window_size (int): Local window size. Default: 7. 局部窗口的大小
+        mlp_ratio (float): Ratio of mlp hidden dim to embedding dim. Default: 4. MLP隐藏层维度转化为embedding维度的比例
         qkv_bias (bool, optional): If True, add a learnable bias to query, key, value. Default: True
         qk_scale (float | None, optional): Override default qk scale of head_dim ** -0.5 if set.
         drop (float, optional): Dropout rate. Default: 0.0
         attn_drop (float, optional): Attention dropout rate. Default: 0.0
         drop_path (float | tuple[float], optional): Stochastic depth rate. Default: 0.0
         norm_layer (nn.Module, optional): Normalization layer. Default: nn.LayerNorm
-        downsample (nn.Module | None, optional): Downsample layer at the end of the layer. Default: None
+        downsample (nn.Module | None, optional): Downsample layer at the end of the layer. Default: None 在最后一层加入下采样层
         use_checkpoint (bool): Whether to use checkpointing to save memory. Default: False.
     """
 
@@ -362,7 +369,20 @@ class BasicLayer(nn.Module):
         # calculate attention mask for SW-MSA
         Hp = int(np.ceil(H / self.window_size)) * self.window_size
         Wp = int(np.ceil(W / self.window_size)) * self.window_size
+
+        # 生成全零的张量
         img_mask = torch.zeros((1, Hp, Wp, 1), device=x.device)  # 1 Hp Wp 1
+
+        # 按区域划分mask
+        """
+        Examples:
+        ::
+            s = slice(0, 3)  # indexes 0, 1, 2
+            my_list = [1, 2, 3, 4, 5, 6]
+            print(my_list[s]) 
+            
+            OUTPUT: [1,2,3]  
+        """
         h_slices = (slice(0, -self.window_size),
                     slice(-self.window_size, -self.shift_size),
                     slice(-self.shift_size, None))
@@ -405,7 +425,7 @@ class PatchEmbed(nn.Module):
 
     def __init__(self, patch_size=4, in_chans=3, embed_dim=96, norm_layer=None):
         super().__init__()
-        patch_size = to_2tuple(patch_size)
+        patch_size = to_2tuple(patch_size)  # (patch_size,patch_size) 变为一个元组
         self.patch_size = patch_size
 
         self.in_chans = in_chans
@@ -420,13 +440,14 @@ class PatchEmbed(nn.Module):
     def forward(self, x):
         """Forward function."""
         # padding
-        _, _, H, W = x.size()
+        _, _, H, W = x.size()  # 获取输入特征图的长宽
+        # 如果不能整除，长和宽做一个padding操作
         if W % self.patch_size[1] != 0:
             x = F.pad(x, (0, self.patch_size[1] - W % self.patch_size[1]))
         if H % self.patch_size[0] != 0:
             x = F.pad(x, (0, 0, 0, self.patch_size[0] - H % self.patch_size[0]))
 
-        x = self.proj(x)  # B C Wh Ww
+        x = self.proj(x)  # B C Wh Ww # 一个卷积
         if self.norm is not None:
             Wh, Ww = x.size(2), x.size(3)
             x = x.flatten(2).transpose(1, 2)
@@ -442,26 +463,26 @@ class SwinTransformer(Backbone):
           https://arxiv.org/pdf/2103.14030
     Args:
         pretrain_img_size (int): Input image size for training the pretrained model,
-            used in absolute postion embedding. Default 224.
-        patch_size (int | tuple(int)): Patch size. Default: 4.
-        in_chans (int): Number of input image channels. Default: 3.
-        embed_dim (int): Number of linear projection output channels. Default: 96.
-        depths (tuple[int]): Depths of each Swin Transformer stage.
-        num_heads (tuple[int]): Number of attention head of each stage.
-        window_size (int): Window size. Default: 7.
-        mlp_ratio (float): Ratio of mlp hidden dim to embedding dim. Default: 4.
-        qkv_bias (bool): If True, add a learnable bias to query, key, value. Default: True
-        qk_scale (float): Override default qk scale of head_dim ** -0.5 if set.
-        drop_rate (float): Dropout rate.
-        attn_drop_rate (float): Attention dropout rate. Default: 0.
-        drop_path_rate (float): Stochastic depth rate. Default: 0.2.
-        norm_layer (nn.Module): Normalization layer. Default: nn.LayerNorm.
-        ape (bool): If True, add absolute position embedding to the patch embedding. Default: False.
-        patch_norm (bool): If True, add normalization after patch embedding. Default: True.
-        out_indices (Sequence[int]): Output from which stages.
-        frozen_stages (int): Stages to be frozen (stop grad and set eval mode).
+            used in absolute postion embedding. Default 224. 输入图像的大小，默认是224
+        patch_size (int | tuple(int)): Patch size. Default: 4. 像素块的大小，默认是4
+        in_chans (int): Number of input image channels. Default: 3. 输入图像的通道数，默认是3
+        embed_dim (int): Number of linear projection output channels. Default: 96. 线性编码的通道数，默认是96
+        depths (tuple[int]): Depths of each Swin Transformer stage. 每个Swin Transformer层的深度
+        num_heads (tuple[int]): Number of attention head of each stage. 每个层注意力头的数量
+        window_size (int): Window size. Default: 7. 移动窗口的大小，默认是7
+        mlp_ratio (float): Ratio of mlp hidden dim to embedding dim. Default: 4.MLP隐藏层维度到embedding的比例。
+        qkv_bias (bool): If True, add a learnable bias to query, key, value. Default: True，在qkv中增加一个可学习的偏差。
+        qk_scale (float): Override default qk scale of head_dim ** -0.5 if set.如果设置head_dim**-0.5则覆盖默认qk的尺度
+        drop_rate (float): Dropout rate. dropout的比例
+        attn_drop_rate (float): Attention dropout rate. Default: 0. 注意力dropout的比例
+        drop_path_rate (float): Stochastic depth rate. Default: 0.2.  随机深度的比例
+        norm_layer (nn.Module): Normalization layer. Default: nn.LayerNorm. 正则化的层，默认是层归一化
+        ape (bool): If True, add absolute position embedding to the patch embedding. Default: False. 如果设置为True，在patch embedding 增加绝对位置嵌入
+        patch_norm (bool): If True, add normalization after patch embedding. Default: True. patch_norm 如果设置True，在每一个patch embedding 都加一个正则化。
+        out_indices (Sequence[int]): Output from which stages. 输出哪一个stage
+        frozen_stages (int): Stages to be frozen (stop grad and set eval mode). stage将倍冻结，停止梯度和设置验证模式 -1意味着不冻结任何参数
             -1 means not freezing any parameters.
-        use_checkpoint (bool): Whether to use checkpointing to save memory. Default: False.
+        use_checkpoint (bool): Whether to use checkpointing to save memory. Default: False. 是否使用checkpoint对当前层进行保存
     """
 
     def __init__(self,
@@ -494,12 +515,12 @@ class SwinTransformer(Backbone):
         self.frozen_stages = frozen_stages
 
         self.out_features = out_features
-
+        # 将图像分割为不重叠的像素块。
         # split image into non-overlapping patches
         self.patch_embed = PatchEmbed(
             patch_size=patch_size, in_chans=in_chans, embed_dim=embed_dim,
             norm_layer=norm_layer if self.patch_norm else None)
-
+        # 绝对位置嵌入
         # absolute position embedding
         if self.ape:
             pretrain_img_size = to_2tuple(pretrain_img_size)
@@ -511,12 +532,12 @@ class SwinTransformer(Backbone):
 
         self.pos_drop = nn.Dropout(p=drop_rate)
 
-        # stochastic depth
+        # stochastic depth 随机深度
         dpr = [x.item() for x in torch.linspace(0, drop_path_rate, sum(depths))]  # stochastic depth decay rule
 
         self._out_feature_strides = {}
         self._out_feature_channels = {}
-
+        # 构建网络层
         # build layers
         self.layers = nn.ModuleList()
         for i_layer in range(self.num_layers):
