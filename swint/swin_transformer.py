@@ -17,7 +17,6 @@ from detectron2.layers import ShapeSpec
 
 from torchinfo import summary
 
-
 class Mlp(nn.Module):
     """ Multilayer perceptron."""
 
