@@ -37,7 +37,7 @@ class Mlp(nn.Module):
         x = self.drop(x)
         return x
 
-# 窗口的划分，就是将张量进行划分
+# 窗口的分块，就是将张量进行划分
 def window_partition(x, window_size):
     """
     Args:
@@ -103,12 +103,18 @@ class WindowAttention(nn.Module):
         # get pair-wise relative position index for each token inside the window
         coords_h = torch.arange(self.window_size[0])
         coords_w = torch.arange(self.window_size[1])
+        # coords 是记录窗口的坐标，原点为窗口的左上角
         coords = torch.stack(torch.meshgrid([coords_h, coords_w]))  # 2, Wh, Ww
+        # 平铺坐标，大小为[2,M的平方]
         coords_flatten = torch.flatten(coords, 1)  # 2, Wh*Ww
+        # 记录窗口内像素的相对位置
         relative_coords = coords_flatten[:, :, None] - coords_flatten[:, None, :]  # 2, Wh*Ww, Wh*Ww
+        # relative_coords的大小为(MM,MM,2), relative_coords[0,:,:]就是坐标原点到所有点的相对位置坐标，
         relative_coords = relative_coords.permute(1, 2, 0).contiguous()  # Wh*Ww, Wh*Ww, 2
+        # 将相对坐标都移动到从0开始
         relative_coords[:, :, 0] += self.window_size[0] - 1  # shift to start from 0
         relative_coords[:, :, 1] += self.window_size[1] - 1
+        # 将相对坐标的高都乘上2M-1,这是为了方式拉伸后的相对位置坐标有相同的
         relative_coords[:, :, 0] *= 2 * self.window_size[1] - 1
         relative_position_index = relative_coords.sum(-1)  # Wh*Ww, Wh*Ww
         self.register_buffer("relative_position_index", relative_position_index)
@@ -218,7 +224,7 @@ class SwinTransformerBlock(nn.Module):
         x = F.pad(x, (0, 0, pad_l, pad_r, pad_t, pad_b))
         _, Hp, Wp, _ = x.shape
 
-        # cyclic shift
+        # cyclic shift 循环移动
         if self.shift_size > 0:
             shifted_x = torch.roll(x, shifts=(-self.shift_size, -self.shift_size), dims=(1, 2))
             attn_mask = mask_matrix
@@ -556,7 +562,7 @@ class SwinTransformer(Backbone):
                 use_checkpoint=use_checkpoint)
             self.layers.append(layer)
 
-            stage = f'stage{i_layer+2}'
+            stage = f'stage{i_layer+1}'
             if stage in self.out_features:
                 self._out_feature_channels[stage] = embed_dim * 2 ** i_layer
                 self._out_feature_strides[stage] = 4 * 2 ** i_layer
@@ -566,7 +572,7 @@ class SwinTransformer(Backbone):
 
         # add a norm layer for each output
         for i_layer in range(self.num_layers):
-            stage = f'stage{i_layer+2}'
+            stage = f'stage{i_layer+1}'
             if stage in self.out_features:
                 layer = norm_layer(num_features[i_layer])
                 layer_name = f'norm{i_layer}'
@@ -616,6 +622,7 @@ class SwinTransformer(Backbone):
         Wh, Ww = x.size(2), x.size(3)
         if self.ape:
             # interpolate the position embedding to the corresponding size
+            # 这个是否将绝对位置信息加入进去
             absolute_pos_embed = F.interpolate(self.absolute_pos_embed, size=(Wh, Ww), mode='bicubic')
             x = (x + absolute_pos_embed).flatten(2).transpose(1, 2)  # B Wh*Ww C
         else:
@@ -752,10 +759,12 @@ if __name__ == '__main__':
     x = torch.randn(1,3,224,224).cuda()
     # x =  x.cuda()
     print(x.shape)
-    output_featuer = ["stage2", "stage3", "stage4", "stage5"]
+    output_featuer = ["stage1", "stage2", "stage3", "stage4"]
     swin_transformer = SwinTransformer(out_features=output_featuer).to(device)
     print(swin_transformer)
     y = swin_transformer(x)
+    summary(swin_transformer, input_size=(1, 3, 224, 224), verbose=1,
+            col_names=['kernel_size', 'output_size', "num_params", "kernel_size", "mult_adds"])
     summary(swin_transformer,input_size=(1,3,224,224),verbose=2, col_names=['kernel_size','output_size',"num_params","kernel_size","mult_adds"])
     # print(y)
     # print(y["stage2"].shape)

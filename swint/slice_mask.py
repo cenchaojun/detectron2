@@ -49,9 +49,12 @@ print(mask_windows.unsqueeze(1))
 print("mask_windows.unsqueeze(1)===================================================================================")
 print(mask_windows.unsqueeze(2))
 print("mask_windows.unsqueeze(2)===================================================================================")
+
+#
 attn_mask = mask_windows.unsqueeze(1) - mask_windows.unsqueeze(2)
 print(attn_mask)
 print("===================================================================================")
+# 将不等于0的点全部mask为-100，
 attn_mask = attn_mask.masked_fill(attn_mask != 0, float(-100.0)).masked_fill(attn_mask == 0, float(0.0))
 print(attn_mask)
 

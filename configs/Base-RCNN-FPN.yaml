@@ -30,10 +30,10 @@ MODEL:
 #    NUM_CONV: 4
 #    POOLER_RESOLUTION: 14
 DATASETS:
-  TRAIN: ("SSLAD-2D_train",)
-  TEST: ("SSLAD-2D_test",)
-#  TRAIN: ("coco_2017_train",)
-#  TEST: ("coco_2017_val",)
+#  TRAIN: ("SSLAD-2D_train",)
+#  TEST: ("SSLAD-2D_test",)
+  TRAIN: ("coco_2017_train",)
+  TEST: ("coco_2017_val",)
 SOLVER:
   IMS_PER_BATCH: 8
   CHECKPOINT_PERIOD: 2000

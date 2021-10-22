@@ -13,10 +13,10 @@ MODEL:
     IOU_LABELS: [0, -1, 1]
     SMOOTH_L1_LOSS_BETA: 0.0
 DATASETS:
-#  TRAIN: ("coco_2017_train",)
-#  TEST: ("coco_2017_val",)
-  TRAIN: ("SSLAD-2D_train",)
-  TEST: ("SSLAD-2D_test",)
+  TRAIN: ("coco_2017_train",)
+  TEST: ("coco_2017_val",)
+#  TRAIN: ("SSLAD-2D_train",)
+#  TEST: ("SSLAD-2D_test",)
 SOLVER:
   IMS_PER_BATCH: 2
   BASE_LR: 0.001  # Note that RetinaNet uses a different default learning rate

@@ -6,9 +6,9 @@ MODEL:
   BACKBONE:
     NAME: "build_retinanet_swint_fpn_backbone"
   SWINT:
-    OUT_FEATURES: ["stage3", "stage4", "stage5"]
+    OUT_FEATURES: ["stage2", "stage3", "stage4"]
   FPN:
-    IN_FEATURES: ["stage3", "stage4", "stage5"]
+    IN_FEATURES: ["stage2", "stage3", "stage4"]
 SOLVER:
   STEPS: (210000, 250000)
   MAX_ITER: 270000
