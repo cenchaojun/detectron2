@@ -562,7 +562,7 @@ class SwinTransformer(Backbone):
                 use_checkpoint=use_checkpoint)
             self.layers.append(layer)
 
-            stage = f'stage{i_layer+1}'
+            stage = f'stage{i_layer+2}'
             if stage in self.out_features:
                 self._out_feature_channels[stage] = embed_dim * 2 ** i_layer
                 self._out_feature_strides[stage] = 4 * 2 ** i_layer
@@ -572,7 +572,7 @@ class SwinTransformer(Backbone):
 
         # add a norm layer for each output
         for i_layer in range(self.num_layers):
-            stage = f'stage{i_layer+1}'
+            stage = f'stage{i_layer+2}'
             if stage in self.out_features:
                 layer = norm_layer(num_features[i_layer])
                 layer_name = f'norm{i_layer}'
@@ -771,4 +771,4 @@ if __name__ == '__main__':
     # print(y["stage3"].shape)
     # print(y["stage4"].shape)
     # print(y["stage5"].shape)
-    #
+    # #

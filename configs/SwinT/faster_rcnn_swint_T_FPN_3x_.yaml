@@ -7,9 +7,9 @@ MODEL:
   BACKBONE:
     NAME: "build_swint_fpn_backbone"
   SWINT:
-    OUT_FEATURES: ["stage1", "stage2", "stage3", "stage4"]
+    OUT_FEATURES: ["stage2", "stage3", "stage4", "stage5"]
   FPN:
-    IN_FEATURES: ["stage1", "stage2", "stage3", "stage4"]
+    IN_FEATURES: ["stage2", "stage3", "stage4", "stage5"]
 SOLVER:
   STEPS: (210000, 250000)
   MAX_ITER: 270000
